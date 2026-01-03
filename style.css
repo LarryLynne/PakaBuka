@@ -259,21 +259,47 @@ svg { z-index: 1; }
 
 .game-logo {
     position: absolute;
-    top: 2%; /* Отступ сверху */
-    left: 50%; /* Центрируем по горизонтали */
-    transform: translateX(-50%); /* Корректировка центрирования */
-    z-index: 5; /* Поверх линий поля, но под фишками */
+    top: 3%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
 
-    font-family: 'Arial Black', 'Impact', sans-serif; /* Массивный шрифт */
-    font-size: 1.5em; /* Крупный размер. Можно уменьшить до 2.5em, если слишком велико */
-    font-weight: 800;
-    letter-spacing: 3px; /* Немного разрядим буквы */
-    color: #242323; 
-    font-family: 'Luckiest Guy', cursive;
-    letter-spacing: 5px;
-    /* Тень для объема и контраста */
-    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.6);
+    /* Оставляем только один шрифт */
+    font-family: 'Luckiest Guy', cursive; 
+    font-size: 2.5em; /* Чуть крупнее */
+    letter-spacing: 3px;
     
-    pointer-events: none; /* Чтобы сквозь логотип можно было кликать */
-    user-select: none; /* Чтобы текст не выделялся */
+    /* Делаем цвет светлее (золото), чтобы читалось на фоне #948181 */
+    color: #FFD700; 
+    
+    /* Черная обводка текста для четкости */
+    -webkit-text-stroke: 1px black; 
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.8); /* Жесткая тень для мультяшности */
+    
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap; /* Чтобы не переносился на узких экранах */
+}
+
+@media (max-aspect-ratio: 1/1) {
+    #center-hud {
+        position: fixed; /* Фиксируем относительно ЭКРАНА, а не поля */
+        top: auto;       /* Отменяем позицию сверху */
+        bottom: 30px;    /* Прижимаем к самому низу экрана (в пустую зону) */
+        
+        left: 50%;
+        transform: translateX(-50%); /* Центрируем только по горизонтали */
+        
+        width: 90%;      /* Делаем панель шире, чтобы кубикам было удобно */
+        z-index: 1000;   /* Поверх всего */
+        
+        /* Немного фона, чтобы отделить от "подвала" страницы, если нужно */
+        padding-bottom: 10px; 
+    }
+    
+    /* Увеличим кнопку броска на телефоне, чтобы удобнее нажимать */
+    button#roll-btn {
+        padding: 15px 40px;
+        font-size: 18px;
+    }
 }
