@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>"ПакаБука" - Финал (CW)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="start-menu">
+        <h1>ПакаБука</h1>
+        <p>Выберите количество игроков:</p>
+        <div class="menu-buttons">
+            <button onclick="game.start(2)">2 Игрока</button>
+            <button onclick="game.start(3)">3 Игрока</button>
+            <button onclick="game.start(4)">4 Игрока</button>
+        </div>
+    </div>
+
+    <div id="modal-overlay">
+        <div id="modal-box">
+            <h3>Куда выходим?</h3>
+            <div id="modal-options"></div>
+        </div>
+    </div>
+
+    <div id="game-field">
+    <div id="center-hud">
+        <div class="dice-container">
+            <div id="dice1" class="dice-box">-</div>
+            <div id="dice2" class="dice-box">-</div>
+        </div>
+        <button id="roll-btn" onclick="game.rollDice()">Бросить</button>
+        <div id="status-msg"></div>
+    </div>
+</div>
+
+    <script src="script.js"></script>
+</body>
+</html>
