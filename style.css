@@ -225,8 +225,8 @@ svg { z-index: 1; }
 
 #center-hud {
     position: absolute;
-    top: 50%;
-    left: 5%; 
+    top: 90%;
+    left: 42.4%; 
     transform: translateY(-50%);
     
     /* Убираем фиксированные размеры, пусть подстраивается под контент */
