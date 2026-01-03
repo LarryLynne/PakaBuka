@@ -27,7 +27,9 @@ body {
     pointer-events: auto; /* Кубики можно кликать */
 }
 .dice-box {
-    width: 40px; height: 40px;
+    width: 2.5em; 
+    height: 2.5em;
+    font-size: clamp(16px, 4vw, 24px);
     background: rgba(255,255,255,0.1); /* Полупрозрачные */
     color: white;
     border: 2px solid rgba(255,255,255,0.3);
@@ -225,15 +227,17 @@ svg { z-index: 1; }
 
 #center-hud {
     position: absolute;
-    top: 90%;
-    left: 42.4%; 
-    transform: translateY(-50%);
+    /* Позиция по вертикали (как ты хотел, внизу) */
+    top: 85%; 
     
-    /* Убираем фиксированные размеры, пусть подстраивается под контент */
-    width: auto; 
+    /* СТРОГОЕ ЦЕНТРИРОВАНИЕ ПО ГОРИЗОНТАЛИ */
+    left: 50%; 
+    transform: translate(-50%, -50%); /* Центруем и по X, и по Y относительно точки */
+    
+    /* Теперь ширина зависит от размера поля */
+    width: 40%; /* Займет 40% ширины игрового поля. Можешь менять число */
     height: auto;
     
-    /* УБИРАЕМ ВЕСЬ ВИЗУАЛ КОНТЕЙНЕРА */
     background: none;
     border: none;
     box-shadow: none;
@@ -246,7 +250,6 @@ svg { z-index: 1; }
     justify-content: center;
     align-items: center;
     
-    /* Контейнер прозрачный для кликов, элементы внутри - нет */
     pointer-events: none; 
 }
 
