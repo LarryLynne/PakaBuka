@@ -225,34 +225,52 @@ svg { z-index: 1; }
 
 #center-hud {
     position: absolute;
-    /* Центрируем по вертикали, но прижимаем влево */
     top: 50%;
-    left: 0%; 
+    left: 5%; 
     transform: translateY(-50%);
-
-    /* Фиксированный размер относительно поля, чтобы не "прыгало" */
-    width: 25%; 
-    height: 25%;
     
-    /* Возвращаем стиль "черной дыры" */
-    background: radial-gradient(circle, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 70%);
-    border-radius: 50%;
-    border: none; /* Убираем рамки */
-    box-shadow: none; /* Тень будет добавляться через JS, но мягкая */
+    /* Убираем фиксированные размеры, пусть подстраивается под контент */
+    width: auto; 
+    height: auto;
+    
+    /* УБИРАЕМ ВЕСЬ ВИЗУАЛ КОНТЕЙНЕРА */
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
 
-    z-index: 5; /* Ниже фишек (у фишек 20), чтобы не перекрывать игру */
+    z-index: 30;
     
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     
-    /* ВАЖНО: Сам контейнер прозрачен для кликов, кликабельны только кнопки внутри */
+    /* Контейнер прозрачный для кликов, элементы внутри - нет */
     pointer-events: none; 
-    transition: box-shadow 0.5s;
 }
 
 #center-hud > * {
     pointer-events: auto;
 }
 
+.game-logo {
+    position: absolute;
+    top: 2%; /* Отступ сверху */
+    left: 50%; /* Центрируем по горизонтали */
+    transform: translateX(-50%); /* Корректировка центрирования */
+    z-index: 5; /* Поверх линий поля, но под фишками */
+
+    font-family: 'Arial Black', 'Impact', sans-serif; /* Массивный шрифт */
+    font-size: 1.5em; /* Крупный размер. Можно уменьшить до 2.5em, если слишком велико */
+    font-weight: 800;
+    letter-spacing: 3px; /* Немного разрядим буквы */
+    color: #242323; 
+    font-family: 'Luckiest Guy', cursive;
+    letter-spacing: 5px;
+    /* Тень для объема и контраста */
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.6);
+    
+    pointer-events: none; /* Чтобы сквозь логотип можно было кликать */
+    user-select: none; /* Чтобы текст не выделялся */
+}

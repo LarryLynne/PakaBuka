@@ -367,13 +367,21 @@ const game = {
     toggleTestMode: function() {
         this.testMode = !this.testMode;
         const badge = document.getElementById('test-badge');
-        if (this.testMode) {
-            badge.style.display = 'block';
-            //this.showStatus("ТЕСТ-РЕЖИМ ВКЛЮЧЕН", "red");
-        } else {
-            badge.style.display = 'none';
-            //this.showStatus("Тест-режим выключен", "#aaa");
-        }
+        
+        // Проверяем, существует ли badge, прежде чем менять стиль
+        if (badge) {
+            if (this.testMode) {
+                badge.style.display = 'block';
+                //this.showStatus("ТЕСТ-РЕЖИМ ВКЛЮЧЕН", "red");
+            } else {
+                badge.style.display = 'none';
+                //this.showStatus("Тест-режим выключен", "#aaa");
+            }
+        }/* else {
+            // Если элемента нет, просто пишем в статус
+             if (this.testMode) this.showStatus("ТЕСТ-РЕЖИМ (Badge missing)", "red");
+             else this.showStatus("Тест-режим выключен", "#aaa");
+        }*/
     },
 
     start: function(count) {
@@ -548,7 +556,9 @@ const game = {
             if (steps !== 6) return false;
             if (String(startPos).includes("Плен")) return this.findFreeStartSlot(player.id) !== null;
             const exitPos = settings.startExit;
-            return !this.getPieceAt(exitPos); 
+            const occupant = this.getPieceAt(exitPos);
+            // Можно ходить, если там пусто ИЛИ если там стоит враг
+            return !occupant || occupant.player.id !== playerId;
         }
 
         if (startPos === "Центр") return steps === 3;
@@ -579,6 +589,16 @@ const game = {
     },
 
     handlePieceClick: function(pieceIndex, ownerId) {
+        const targetPlayer = this.players.find(p => p.id === ownerId);
+        const targetPiece = targetPlayer.pieces[pieceIndex];
+
+        // Если сейчас этап выбора цели (горят зеленые точки) 
+        // и кликнутая фишка стоит ровно на одной из этих точек:
+        if (this.activeDestinations.includes(targetPiece.pos)) {
+            // Считаем это кликом по точке назначения
+            this.handlePointClick(targetPiece.pos);
+            return;
+        }
         if (this.phase === 'bonus') {
             if (ownerId !== this.bonusPlayerId) { return; } //{ this.showStatus("Ждем ход соперника!", "red"); return; }
             this.executeMove(pieceIndex, 6, true);
@@ -651,10 +671,15 @@ const game = {
                         // Выход со старта
                         const settings = playerSettings[playerId];
                         const newPos = settings.startExit;
-                        if (!this.getPieceAt(newPos)) {
+                        const occupant = this.getPieceAt(newPos);
+
+                        // Если пусто ИЛИ стоит враг — добавляем вариант хода
+                        if (!occupant || occupant.player.id !== playerId) {
                             options.push({ target: newPos, dist: 0 });
                         } else {
-                            return; //this.showStatus("Выход занят!", "red"); return;
+                            // Если стоит свой — блокируем
+                            this.showStatus("Выход занят своим!", "red"); 
+                            return;
                         }
                     }
                 } else {
@@ -942,7 +967,7 @@ const game = {
         }
 
         // Красим HUD в цвет игрока
-        hud.style.boxShadow = `0 0 30px ${activeColor}40`; // 40 - это прозрачность
+        //hud.style.boxShadow = `0 0 30px ${activeColor}40`; // 40 - это прозрачность
         //hud.style.borderColor = activeColor;
         //hud.style.backgroundColor = `${activeColor}40`;
         btn.style.color = activeColor;

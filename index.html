@@ -5,15 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>"ПакаБука" - Финал (CW)</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="start-menu">
-        <h1>ПакаБука</h1>
-        <p>Выберите количество игроков:</p>
+        <h1>PakaBuka</h1>
+        <p>Select players count:</p>
         <div class="menu-buttons">
-            <button onclick="game.start(2)">2 Игрока</button>
-            <button onclick="game.start(3)">3 Игрока</button>
-            <button onclick="game.start(4)">4 Игрока</button>
+            <button onclick="game.start(2)">2</button>
+            <button onclick="game.start(3)">3</button>
+            <button onclick="game.start(4)">4</button>
         </div>
     </div>
 
@@ -25,12 +27,14 @@
     </div>
 
     <div id="game-field">
+        <div class="game-logo">PakaBuka</div>
+        <div id="test-badge" style="display: none;">Debug mode</div>
     <div id="center-hud">
         <div class="dice-container">
             <div id="dice1" class="dice-box">-</div>
             <div id="dice2" class="dice-box">-</div>
         </div>
-        <button id="roll-btn" onclick="game.rollDice()">Бросить</button>
+        <button id="roll-btn" onclick="game.rollDice()">Throw</button>
         <div id="status-msg"></div>
     </div>
 </div>
