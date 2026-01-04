@@ -384,3 +384,10 @@ svg { z-index: 1; }
         display: none; /* На узком экране статус может мешать, лучше скрыть или уменьшить */
     }
 }
+
+/* --- СКРЫВАЕМ ИНТЕРФЕЙС ПРИ СТАРТЕ --- */
+body.menu-active .game-logo,
+body.menu-active #center-hud,
+body.menu-active #test-badge {
+    display: none !important;
+}

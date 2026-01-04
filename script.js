@@ -385,6 +385,7 @@ const game = {
     },
 
     start: function(count) {
+        document.body.classList.remove('menu-active');
         document.getElementById('start-menu').style.display = 'none';
 
         let selectedConfigs = [];
