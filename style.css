@@ -310,17 +310,26 @@ svg { z-index: 1; }
         transform: translateX(-50%);
         width: 90%;
         
-        /* Возвращаем взаимодействие */
-        pointer-events: auto; 
+        /* ВАЖНО: Сам контейнер прозрачный и пропускает клики сквозь пустое место */
+        pointer-events: none; 
         
-        /* Немного фона, чтобы отделить от игрового поля, если наедет */
-        background: rgba(0, 0, 0, 0.6);
-        padding: 15px;
-        border-radius: 20px;
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(255,255,255,0.1);
+        /* Убираем весь фон и рамки */
+        background: none;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        padding: 0;
         
         z-index: 1000;
+        
+        /* Выстраиваем элементы */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px; /* Отступ между кубиками и кнопкой */
+    }
+    #center-hud > * {
+        pointer-events: auto;
     }
 
     button#roll-btn {
