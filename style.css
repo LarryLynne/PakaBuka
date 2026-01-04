@@ -281,25 +281,106 @@ svg { z-index: 1; }
     white-space: nowrap; /* Чтобы не переносился на узких экранах */
 }
 
-@media (max-aspect-ratio: 1/1) {
-    #center-hud {
-        position: fixed; /* Фиксируем относительно ЭКРАНА, а не поля */
-        top: auto;       /* Отменяем позицию сверху */
-        bottom: 30px;    /* Прижимаем к самому низу экрана (в пустую зону) */
-        
+/* =========================================
+   АДАПТИВНОСТЬ (MOBILE LAYOUTS)
+   ========================================= */
+
+/* --- 1. Мобильный ВЕРТИКАЛЬНЫЙ (Portrait) --- */
+/* Лого сверху, Кубики снизу, Поле посередине */
+@media (max-width: 768px) and (orientation: portrait) {
+    
+    /* Логотип выносим наверх экрана */
+    .game-logo {
+        position: fixed; /* Фиксируем относительно экрана, а не поля */
+        top: 30px;
         left: 50%;
-        transform: translateX(-50%); /* Центрируем только по горизонтали */
+        transform: translateX(-50%);
+        width: 100%;
+        text-align: center;
+        font-size: 3em; /* Крупнее */
+        z-index: 1000;
+    }
+
+    /* Панель управления прибиваем к низу экрана */
+    #center-hud {
+        position: fixed;
+        top: auto;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
         
-        width: 90%;      /* Делаем панель шире, чтобы кубикам было удобно */
-        z-index: 1000;   /* Поверх всего */
+        /* Возвращаем взаимодействие */
+        pointer-events: auto; 
         
-        /* Немного фона, чтобы отделить от "подвала" страницы, если нужно */
-        padding-bottom: 10px; 
+        /* Немного фона, чтобы отделить от игрового поля, если наедет */
+        background: rgba(0, 0, 0, 0.6);
+        padding: 15px;
+        border-radius: 20px;
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255,255,255,0.1);
+        
+        z-index: 1000;
+    }
+
+    button#roll-btn {
+        width: 100%; /* Кнопка во всю ширину для удобства пальца */
+        padding: 15px;
+        font-size: 18px;
+    }
+}
+
+/* --- 2. Мобильный ГОРИЗОНТАЛЬНЫЙ (Landscape) --- */
+/* Логотип чуть наезжает, Кубики справа сбоку */
+@media (max-height: 600px) and (orientation: landscape) {
+
+    /* Логотип в левом верхнем углу или по центру, слегка на поле */
+    .game-logo {
+        position: fixed;
+        top: 10px;
+        left: 20px; /* Сдвигаем влево, чтобы не мешать центру */
+        transform: none;
+        font-size: 2em;
+        z-index: 50; /* Поверх поля, но под интерфейсом */
+        opacity: 0.8; /* Чуть прозрачнее, чтобы видеть фишки под ним */
+    }
+
+    /* Панель управления справа вертикальным столбиком */
+    #center-hud {
+        position: fixed;
+        top: 50%;
+        left: auto;
+        right: 20px; /* Прижимаем к правому краю */
+        bottom: auto;
+        transform: translateY(-50%); /* Центруем по вертикали */
+        
+        width: auto;
+        height: auto;
+        
+        display: flex;
+        flex-direction: column; /* Вертикальная колонка */
+        gap: 10px;
+        
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 15px;
+        z-index: 1000;
+    }
+
+    .dice-container {
+        flex-direction: column; /* Кубики друг под другом */
+        gap: 10px;
+        margin-bottom: 5px;
+    }
+
+    button#roll-btn {
+        width: 100%;
+        font-size: 14px;
+        white-space: normal;
+        line-height: 1.2;
     }
     
-    /* Увеличим кнопку броска на телефоне, чтобы удобнее нажимать */
-    button#roll-btn {
-        padding: 15px 40px;
-        font-size: 18px;
+    #status-msg {
+        display: none; /* На узком экране статус может мешать, лучше скрыть или уменьшить */
     }
 }

@@ -1236,7 +1236,47 @@ document.getElementById('dice1').onclick = () => game.selectDie(0);
 document.getElementById('dice2').onclick = () => game.selectDie(1);
 
 function updateGameFieldSize() {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.95;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    let size;
+
+    // Проверяем, мобильное ли устройство (грубая проверка по ширине)
+    const isMobilePortrait = w <= 768 && h > w;
+    const isMobileLandscape = h <= 600 && w > h;
+
+    if (isMobilePortrait) {
+        // ВЕРТИКАЛЬНО:
+        // Оставляем место сверху для Лого и снизу для Кнопок.
+        // Доступная высота для поля примерно 70% от экрана (минус отступы)
+        const availableHeight = h * 0.70; 
+        // Поле не должно быть шире экрана (минус отступы)
+        const availableWidth = w * 0.95;
+        
+        size = Math.min(availableWidth, availableHeight);
+        
+        // Сдвигаем поле чуть вверх, чтобы оно было между Лого и Кнопками
+        // (CSS flex body центрует, но margin поможет визуально скорректировать)
+        gameField.style.marginTop = "-10%"; 
+
+    } else if (isMobileLandscape) {
+        // ГОРИЗОНТАЛЬНО:
+        // Оставляем место справа для панели управления
+        const availableWidth = w * 0.80; 
+        const availableHeight = h * 0.95;
+        
+        size = Math.min(availableWidth, availableHeight);
+        
+        gameField.style.marginTop = "0";
+        // Сдвигаем влево, чтобы освободить место справа
+        gameField.style.marginLeft = "-10%"; 
+
+    } else {
+        // НОУТБУК / ДЕСКТОП (Как было раньше)
+        size = Math.min(w, h) * 0.95;
+        gameField.style.marginTop = "0";
+        gameField.style.marginLeft = "0";
+    }
+
     gameField.style.width = `${size}px`;
     gameField.style.height = `${size}px`;
     renderGame();
