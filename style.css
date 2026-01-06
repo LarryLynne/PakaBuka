@@ -1,24 +1,24 @@
+:root {
+    --bg-color: #1c1929;       /* Цвет фона по умолчанию */
+    --dot-color: #ba9c9c;      /* Цвет обычных точек */
+    --dot-size: 5px;           /* Размер точек */
+    --line-color: #756c6c;
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0; padding: 0;
     display: flex; justify-content: center; align-items: center;
-    height: 100dvh; background-color: #948181; color: white;
+    height: 100dvh; background-color: var(--bg-color); color: white;
     overflow: hidden; user-select: none;
 }
-#game-field { position: relative; background-color:#948181; }
+#game-field { position: relative; background-color:var(--bg-color); }
 .point {
-    width: 8px; height: 8px; /*border: 1px solid black;*/
+    width: var(--dot-size);  /* БЫЛО: 8px */
+    height: var(--dot-size); /* БЫЛО: 8px */
     border-radius: 50%; position: absolute;
     transform: translate(-50%, -50%); z-index: 2; box-sizing: border-box;
 }
-
-/*#ui-panel {
-    position: absolute; top: 20px; right: 20px;
-    background: #948181; padding: 20px;
-    border-radius: 10px; border: 1px solid #444; z-index: 100;
-    display: flex; flex-direction: column; gap: 15px;
-    width: 170px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-}*/
 
 .dice-container {
     display: flex;
@@ -89,7 +89,7 @@ button#roll-btn:disabled {
     border: 2px solid white; 
     box-shadow: 
         inset 0 0 4px rgba(255, 255, 255, 0.8),
-        0 0 5px var(--p-color),
+        0 0 20px var(--p-color),
         0 0 10px var(--p-color);
         
     cursor: pointer; 
@@ -400,3 +400,21 @@ body.menu-active #center-hud,
 body.menu-active #test-badge {
     display: none !important;
 }
+
+#debug-panel {
+    display: none; /* Скрыта по умолчанию */
+    position: absolute;
+    top: 60px; left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #FFD700;
+    color: white;
+    z-index: 500;
+    font-family: monospace;
+}
+#debug-panel label {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; width: 200px;
+}
+#debug-panel input { margin-left: 10px; cursor: pointer; }

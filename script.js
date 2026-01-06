@@ -340,9 +340,9 @@ const centerExitOptions = [27, 81, 135, 189];
 // Шаблоны игроков (чтобы брать нужное количество)
 const ALL_PLAYERS_DATA = [
     { id: 1, name: "Зеленый", color: "#00FF00" },
-    { id: 2, name: "Синий", color: "#00FFFF" },
-    { id: 3, name: "Малиновый", color: "#FF00FF" },
-    { id: 4, name: "Оранжевый", color: "#FFA500" }
+    { id: 2, name: "Синий", color: "#004cffff" },
+    { id: 3, name: "Малиновый", color: "#eeff00ff" },
+    { id: 4, name: "Оранжевый", color: "#ff0000ff" }
 ];
 
 const game = {
@@ -367,27 +367,30 @@ const game = {
     toggleTestMode: function() {
         this.testMode = !this.testMode;
         const badge = document.getElementById('test-badge');
-        
-        // Проверяем, существует ли badge, прежде чем менять стиль
+        const panel = document.getElementById('debug-panel'); // Получаем панель
+
         if (badge) {
             if (this.testMode) {
                 badge.style.display = 'block';
-                //this.showStatus("ТЕСТ-РЕЖИМ ВКЛЮЧЕН", "red");
+                if (panel) panel.style.display = 'block'; // Показываем настройки
             } else {
                 badge.style.display = 'none';
-                //this.showStatus("Тест-режим выключен", "#aaa");
+                if (panel) panel.style.display = 'none'; // Скрываем настройки
             }
-        }/* else {
-            // Если элемента нет, просто пишем в статус
-             if (this.testMode) this.showStatus("ТЕСТ-РЕЖИМ (Badge missing)", "red");
-             else this.showStatus("Тест-режим выключен", "#aaa");
-        }*/
+        }
     },
+
+    // Новый метод для обновления переменных CSS
+    updateStyle: function(varName, value) {
+        document.documentElement.style.setProperty(varName, value);
+    },
+    
+    // ... остальной код (start, rollDice и т.д.) ...
 
     start: function(count) {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
                          || (navigator.maxTouchPoints > 1);
-
+        
         // Включаем полный экран ТОЛЬКО если это мобилка
         if (isMobile) {
             const elem = document.documentElement;
@@ -864,25 +867,6 @@ const game = {
         }
     },
 
-    /*showCenterExitDialog: function(pieceIndex, isBonus) {
-        const overlay = document.getElementById('modal-overlay');
-        const optionsDiv = document.getElementById('modal-options');
-        optionsDiv.innerHTML = ""; 
-
-        centerExitOptions.forEach(target => {
-            const btn = document.createElement("button");
-            btn.className = "modal-btn";
-            btn.innerText = `На ${target}`;
-            btn.onclick = () => {
-                overlay.style.display = "none";
-                this.finalizeMove(pieceIndex, target, isBonus, 3, 0); 
-            };
-            optionsDiv.appendChild(btn);
-        });
-
-        overlay.style.display = "flex";
-    },*/
-
     checkEndTurn: function() {
         const usedCount = (this.diceUsed[0] ? 1 : 0) + (this.diceUsed[1] ? 1 : 0);
         if (usedCount === 2) {
@@ -1136,7 +1120,7 @@ function renderGame() {
         if (typeof point.id === 'number') {
             let nextId = point.id + 1;
             if (nextId === 216) nextId = 0;
-            if (pointMap[nextId]) drawLine(point, pointMap[nextId], "#444", 2);
+            if (pointMap[nextId]) drawLine(point, pointMap[nextId], "var(--line-color)", 2);
         }
         if (typeof point.id === 'string') {
             const parts = point.id.split('_'); 
@@ -1145,7 +1129,7 @@ function renderGame() {
                 const num = parseInt(parts[1]);
                 const nextId = `${type}_${num + 1}`;
                 if (pointMap[nextId]) {
-                    let col = "#555";
+                    let col = "var(--line-color)";
                     if (type.includes("Финиш")) col = "#FFD700";
                     if (type.includes("Старт")) col = "#4CAF50";
                     if (type.includes("Плен")) col = "#F44336"; 
@@ -1195,7 +1179,7 @@ function renderGame() {
         else if (pid.includes("Плен")) div.style.backgroundColor = "#F44336";
         else if (pid.includes("Центр")) div.style.backgroundColor = "white";
         else if ([0, 54, 108, 162].includes(point.id)) div.style.backgroundColor = "#fff";
-        else div.style.backgroundColor = "#252525ff";
+        else div.style.backgroundColor = "var(--dot-color)";
         
         gameField.appendChild(div);
     });
