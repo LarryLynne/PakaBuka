@@ -395,7 +395,7 @@ const game = {
         } else if (elem.msRequestFullscreen) { /* IE11 */
             elem.msRequestFullscreen();
         }
-        
+
         document.body.classList.remove('menu-active');
         document.getElementById('start-menu').style.display = 'none';
 
@@ -467,7 +467,7 @@ const game = {
             this.diceUsed = [true, true];
             this.phase = 'wait';
             this.updateUI();
-            setTimeout(() => this.nextTurn(), 1500);
+            setTimeout(() => this.nextTurn(), 1000);
         } else {
             //this.showStatus("Ваш ход.", "#fff");
             this.updateUI();
