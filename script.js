@@ -385,6 +385,17 @@ const game = {
     },
 
     start: function(count) {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                console.log("Fullscreen blocked or not supported", err);
+            });
+        } else if (elem.webkitRequestFullscreen) { /* Safari */
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) { /* IE11 */
+            elem.msRequestFullscreen();
+        }
+        
         document.body.classList.remove('menu-active');
         document.getElementById('start-menu').style.display = 'none';
 
