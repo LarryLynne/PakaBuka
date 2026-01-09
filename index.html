@@ -31,9 +31,7 @@
             <div id="modal-options"></div>
         </div>
     </div>
-
-    <div id="game-field">
-        <div id="test-badge" style="display: none;">Debug mode</div>
+    <div id="test-badge" style="display: none;">Debug mode</div>
         <div id="debug-panel">
         <h3 style="margin: 0 0 10px 0; color: #FFD700;">Настройки UI</h3>
         <label>
@@ -53,6 +51,8 @@
             <input type="color" id="cfg-line" value="#444444" oninput="game.updateStyle('--line-color', this.value)">
         </label>
     </div>
+    <div id="game-field">
+        
         <div id="center-hud">
             <div class="dice-container">
                 <div id="dice1" class="dice-box">-</div>
@@ -62,7 +62,7 @@
             <div id="status-msg"></div>
         </div>
     </div>
-
+    <canvas id="fireworks-canvas"></canvas>
     <script src="script.js"></script>
 </body>
 </html>

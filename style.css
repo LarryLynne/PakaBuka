@@ -38,32 +38,62 @@ body {
     font-size: 24px; font-weight: bold;
     backdrop-filter: blur(2px);
 }
+
+.dice-box svg {
+    width: 80%;       /* Точки занимают 80% места внутри рамки */
+    height: 80%;
+    fill: currentColor; /* Наследует цвет текста (белый или цвет игрока) */
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); /* Легкая тень для объема точек */
+}
+
 .dice-box:active { transform: scale(0.95); }
 
 button#roll-btn {
     pointer-events: auto;
-    padding: 8px 20px;
-    font-size: 14px;
+    
+    /* === ДЕЛАЕМ КРУГ === */
+    width: 80px;  /* Фиксированная ширина */
+    height: 80px; /* Фиксированная высота (равна ширине) */
+    border-radius: 50%; /* Превращает квадрат в круг */
+    padding: 0;   /* Убираем внутренние отступы */
+    
+    /* Центрируем текст внутри круга */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Оформление текста */
+    font-size: 11px; /* Чуть меньше, чтобы длинные слова влезли */
     font-weight: bold;
+    text-transform: uppercase;
+    
+    /* Цвета и эффекты (Glassmorphism) */
     color: white;
     background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.5);
-    border-radius: 20px;
+    border: 2px solid rgba(255,255,255,0.5); /* Рамка чуть толще */
     cursor: pointer;
-    text-transform: uppercase;
     transition: 0.2s;
     backdrop-filter: blur(4px);
+    
+    /* Тень, чтобы кнопка казалась объемной */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 
 button#roll-btn:hover {
     background: rgba(255,255,255,0.3);
-    box-shadow: 0 0 15px currentColor; /* Светится текущим цветом текста */
+    box-shadow: 0 0 15px currentColor, 0 5px 10px rgba(0,0,0,0.5);
+    transform: scale(1.1); /* Небольшое увеличение при наведении */
+}
+
+button#roll-btn:active {
+    transform: scale(0.95);
 }
 
 button#roll-btn:disabled {
     opacity: 0.3;
     cursor: default;
     box-shadow: none;
+    transform: none;
 }
 
 #turn-info { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 5px; }
@@ -333,9 +363,12 @@ svg { z-index: 1; }
     }
 
     button#roll-btn {
-        width: 100%; /* Кнопка во всю ширину для удобства пальца */
+        /*width: 100%; /* Кнопка во всю ширину для удобства пальца */
         padding: 15px;
         font-size: 18px;
+        width: 70px;
+        height: 70px;
+        font-size: 12px;
     }
 }
 
@@ -418,3 +451,15 @@ body.menu-active #test-badge {
     margin-bottom: 8px; width: 200px;
 }
 #debug-panel input { margin-left: 10px; cursor: pointer; }
+
+/* --- САЛЮТ --- */
+#fireworks-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000; /* Поверх всего */
+    pointer-events: none; /* Чтобы клики проходили сквозь него, если салюта нет */
+    display: none; /* Скрыт по умолчанию */
+}

@@ -339,7 +339,7 @@ const centerExitOptions = [27, 81, 135, 189];
 
 // Шаблоны игроков (чтобы брать нужное количество)
 const ALL_PLAYERS_DATA = [
-    { id: 1, name: "Зеленый", color: "#00FF00" },
+    { id: 1, name: "Зеленый", color: "#6cc1d6ff" },
     { id: 2, name: "Синий", color: "#004cffff" },
     { id: 3, name: "Малиновый", color: "#eeff00ff" },
     { id: 4, name: "Оранжевый", color: "#ff0000ff" }
@@ -379,6 +379,39 @@ const game = {
             }
         }
     },
+
+    // Генерация SVG картинки кубика
+    getDiceSvg: function(val) {
+        if (!val) return ''; // Если 0 или null — пусто
+
+        // Координаты точек для разных чисел
+        const p = {
+            c:  [50, 50], // Центр
+            tl: [25, 25], // Верх-лево
+            tr: [75, 25], // Верх-право
+            cl: [25, 50], // Центр-лево
+            cr: [75, 50], // Центр-право
+            bl: [25, 75], // Низ-лево
+            br: [75, 75]  // Низ-право
+        };
+
+        let dots = [];
+        if (val === 1) dots = [p.c];
+        if (val === 2) dots = [p.tl, p.br];
+        if (val === 3) dots = [p.tl, p.c, p.br];
+        if (val === 4) dots = [p.tl, p.tr, p.bl, p.br];
+        if (val === 5) dots = [p.tl, p.tr, p.c, p.bl, p.br];
+        if (val === 6) dots = [p.tl, p.tr, p.cl, p.cr, p.bl, p.br];
+
+        // Собираем кружочки (r=10 — радиус точки)
+        // fill="currentColor" означает, что цвет берется из CSS color родителя
+        const circles = dots.map(([cx, cy]) => 
+            `<circle cx="${cx}" cy="${cy}" r="10" fill="currentColor"/>`
+        ).join('');
+
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${circles}</svg>`;
+    },
+
 
     // Новый метод для обновления переменных CSS
     updateStyle: function(varName, value) {
@@ -453,6 +486,13 @@ const game = {
         this.selectedDieIndex = null;
         this.phase = 'move'; 
 
+        // === НОВОЕ: АВТОВЫБОР ПРИ ДУБЛЕ ===
+        // Если числа равны и есть валидный ход — сразу выбираем первый кубик
+        if (d1 === d2 && this.checkIfMovePossible(d1)) {
+            this.selectedDieIndex = 0;
+        }
+        // ==================================
+
         this.updateUI();
         renderGame(); 
 
@@ -461,8 +501,8 @@ const game = {
         const hasPiecesInPrison = player.pieces.some(p => String(p.pos).includes("Плен"));
         const rolledSix = (d1 === 6 || d2 === 6);
 
+        // Если выпала 6 и нужно выходить/спасать — прерываем (но кубик уже может быть выбран выше, что удобно)
         if (rolledSix && (hasPiecesInStart || hasPiecesInPrison)) {
-            //this.showStatus("Есть 6! Действуйте.", "lime");
             return; 
         }
 
@@ -470,13 +510,11 @@ const game = {
         const canMove2 = this.checkIfMovePossible(d2);
 
         if (!canMove1 && !canMove2) {
-            //this.showStatus("Нет ходов! Пропуск...", "red");
             this.diceUsed = [true, true];
             this.phase = 'wait';
             this.updateUI();
             setTimeout(() => this.nextTurn(), 1000);
         } else {
-            //this.showStatus("Ваш ход.", "#fff");
             this.updateUI();
         }
     },
@@ -819,18 +857,14 @@ const game = {
                 
                 if (!isSelfLoop) {
                     if (occupant.player.id === player.id) { 
-                        //this.showStatus("Занято своим!", "red"); 
                         return; 
                     } else { 
                         if (String(newPos).includes("Финиш")) { 
-                            //this.showStatus("Здесь нельзя атаковать!", "red"); 
                             return; 
                         }
                         if(!this.capturePiece(occupant, player.id)) { 
-                            //this.showStatus("Тюрьма полна!", "red");
                             return; 
                         }
-                        //this.showStatus(`Пленен ${occupant.player.name}!`, "cyan");
                     }
                 }
             }
@@ -840,30 +874,57 @@ const game = {
                 pieceObj.dist += distIncrease;
             }
             
+            // --- ЛОГИКА ЗАВЕРШЕНИЯ ХОДА И АВТОВЫБОРА ---
             if (isBonus) {
-                //this.showStatus("Бонусный ход завершен.", "lime");
                 this.phase = 'move';
+                // Помечаем использованным тот кубик, который мы "заморозили" перед бонусом
                 this.diceUsed[this.savedDieIndex] = true; 
                 this.selectedDieIndex = null;
                 this.bonusPlayerId = null;
             } else {
+                // Помечаем текущий выбранный кубик
                 this.diceUsed[this.selectedDieIndex] = true;
-                this.selectedDieIndex = null;
-                //if (!this.showStatus.lastAttack) this.showStatus("Ход сделан", "#ccc");
+                
+                // Сбрасываем выбор перед проверкой автовыбора
+                this.selectedDieIndex = null; 
             }
+            
+            // === НОВАЯ ЛОГИКА: АВТОВЫБОР ВТОРОГО КУБИКА ===
+            // Считаем, сколько кубиков использовано
+            const usedCount = (this.diceUsed[0] ? 1 : 0) + (this.diceUsed[1] ? 1 : 0);
+            
+            // Если использован ровно 1 кубик (значит остался еще один)
+            if (usedCount === 1) {
+                // Находим индекс оставшегося кубика (если 0 использован, то 1, иначе 0)
+                const remainingIndex = this.diceUsed[0] ? 1 : 0;
+                
+                // Проверяем, можно ли вообще походить оставшимся числом
+                if (this.checkIfMovePossible(this.dice[remainingIndex])) {
+                    // Если можно — выбираем его автоматически!
+                    this.selectedDieIndex = remainingIndex;
+                }
+            }
+            // ===============================================
+
             
             const allHome = player.pieces.every(p => String(p.pos).includes("Финиш"));
             
             if (allHome && !player.isFinished) {
                 player.isFinished = true;
-                //this.showStatus(`${player.name} ЗАКОНЧИЛ ИГРУ!`, "gold");
-                //alert(`Поздравляем! ${player.name} завел все фишки!`);
+                
+                // === ЗАПУСКАЕМ ПЕРСОНАЛЬНЫЙ САЛЮТ ===
+                // Передаем цвет игрока, который только что закончил
+                showCelebration(player.color);
+                
+                // Можно добавить сообщение в статус
+                //this.showStatus(`${player.name} ЗАКОНЧИЛ ИГРУ!`, player.color);
             }
+            
 
+            this.checkEndTurn(); // Здесь проверится, если ходов нет совсем, и ход передастся
+            
             renderGame();
-            this.updateUI();
-
-            this.checkEndTurn();
+            this.updateUI(); // UI обновится, и второй кубик уже будет подсвечен
         }
     },
 
@@ -895,13 +956,12 @@ const game = {
         const activePlayers = this.players.filter(p => !p.isFinished);
         
         if (activePlayers.length <= 1) {
-            const loser = activePlayers[0]; 
-            const msg = loser 
-                ? `ИГРА ОКОНЧЕНА! Проиграл: ${loser.name}` 
-                : "ИГРА ОКОНЧЕНА! Все молодцы.";
+            // Если остался последний игрок (или 0), игра окончена.
+            // Салюты уже были показаны для победителей в момент их финиша.
             
-            //this.showStatus(msg, "#fff");
-            alert(msg);
+            //const msg = "ИГРА ОКОНЧЕНА!";
+            //this.showStatus(msg, "#FFD700");
+            //alert(msg); // Обычный алерт, чтобы обозначить финал
             
             this.phase = 'finished'; 
             this.updateUI();
@@ -922,8 +982,10 @@ const game = {
         this.bonusPlayerId = null;
         this.updateUI();
         renderGame();
-        //this.showStatus(`Ход: ${this.players[this.turn].name}`, this.players[this.turn].color);
     },
+
+
+
 
     updateUI: function() {
         const d1El = document.getElementById('dice1');
@@ -932,12 +994,14 @@ const game = {
         const status = document.getElementById('status-msg');
         const hud = document.getElementById('center-hud');
 
-        d1El.innerText = this.dice[0] || '';
-        d2El.innerText = this.dice[1] || '';
+        d1El.innerHTML = this.dice[0] ? this.getDiceSvg(this.dice[0]) : '-';
+        d2El.innerHTML = this.dice[1] ? this.getDiceSvg(this.dice[1]) : '-';
 
         // Подсветка выбранного кубика
         d1El.style.borderColor = (this.selectedDieIndex === 0) ? "#fff" : "rgba(255,255,255,0.3)";
         d2El.style.borderColor = (this.selectedDieIndex === 1) ? "#fff" : "rgba(255,255,255,0.3)";
+
+
         
         // Визуальное отключение использованных
         d1El.style.opacity = this.diceUsed[0] ? "0.2" : "1";
@@ -965,6 +1029,8 @@ const game = {
                 else status.innerText = "...";*/
             }
         }
+        d1El.style.color = activeColor;
+        d2El.style.color = activeColor;
 
         // Красим HUD в цвет игрока
         //hud.style.boxShadow = `0 0 30px ${activeColor}40`; // 40 - это прозрачность
@@ -1292,3 +1358,145 @@ document.addEventListener('keydown', function(event) {
         game.toggleTestMode();
     }
 });
+
+
+// ==========================================
+// 4. СИСТЕМА САЛЮТА (FIREWORKS)
+// ==========================================
+function showCelebration(color) {
+    const canvas = document.getElementById('fireworks-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    canvas.style.display = 'block';
+    
+    // ВАЖНО: pointer-events: none в CSS уже стоит, 
+    // поэтому сквозь салют можно будет кликать, если нужно.
+
+    let w, h;
+    const particles = [];
+    const rockets = [];
+    let spawning = true; // Флаг: пускаем ли новые ракеты
+
+    // Настройка размеров
+    function resize() {
+        w = window.innerWidth;
+        h = window.innerHeight;
+        canvas.width = w;
+        canvas.height = h;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Через 3 секунды перестаем пускать ракеты
+    setTimeout(() => { spawning = false; }, 3000);
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 4 + 2; 
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.alpha = 1;
+            this.decay = Math.random() * 0.02 + 0.01;
+            this.gravity = 0.1; 
+        }
+        update() {
+            this.vx *= 0.95;
+            this.vy *= 0.95;
+            this.vy += this.gravity;
+            this.x += this.vx;
+            this.y += this.vy;
+            this.alpha -= this.decay;
+        }
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            
+            // 1. Основной цвет частицы
+            ctx.fillStyle = this.color;
+
+            // 2. Настраиваем "Свечение" (размытую тень)
+            // shadowBlur определяет, насколько широко рассеивается свет. 
+            // Попробуйте значения от 10 до 25.
+            ctx.shadowBlur = 20; 
+            // Цвет тени должен совпадать с цветом искры
+            ctx.shadowColor = this.color; 
+
+            ctx.beginPath();
+            // 3. Немного увеличим размер самой точки (с 3 до 4 или 5), 
+            // чтобы ядро было ярче на фоне свечения.
+            ctx.arc(this.x, this.y, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // ВАЖНО: restore() сбрасывает настройки тени, 
+            // чтобы они не применялись к другим элементам (если бы мы их рисовали)
+            ctx.restore();
+        }
+    }
+
+    class Rocket {
+        constructor() {
+            this.x = Math.random() * w;
+            this.y = h;
+            this.targetY = h * 0.2 + Math.random() * (h * 0.5); 
+            this.speed = Math.random() * 3 + 10;
+            this.color = color; // Цвет победителя
+        }
+        update() {
+            this.y -= this.speed;
+            this.speed *= 0.96;
+            if (this.y <= this.targetY || this.speed < 1) {
+                this.explode();
+                return false; 
+            }
+            return true; 
+        }
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 5, 0, Math.PI * 2); 
+            ctx.fill();
+        }
+        explode() {
+            for (let i = 0; i < 60; i++) {
+                particles.push(new Particle(this.x, this.y, this.color));
+            }
+        }
+    }
+
+    function loop() {
+        // Очищаем холст полностью каждый кадр, чтобы видеть игровое поле под ним
+        ctx.clearRect(0, 0, w, h);
+
+        // Спавн ракет (только пока работает таймер)
+        if (spawning && Math.random() < 0.1) {
+            rockets.push(new Rocket());
+        }
+
+        // Ракеты
+        for (let i = rockets.length - 1; i >= 0; i--) {
+            if (!rockets[i].update()) rockets.splice(i, 1);
+            else rockets[i].draw();
+        }
+
+        // Частицы
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw();
+            if (particles[i].alpha <= 0) particles.splice(i, 1);
+        }
+
+        // Если все пусто и спавн закончился — останавливаем анимацию
+        if (!spawning && rockets.length === 0 && particles.length === 0) {
+            canvas.style.display = 'none'; // Скрываем холст
+        } else {
+            requestAnimationFrame(loop);
+        }
+    }
+    
+    loop();
+}
