@@ -341,7 +341,7 @@ const centerExitOptions = [27, 81, 135, 189];
 const ALL_PLAYERS_DATA = [
     { id: 1, name: "Зеленый", color: "#6cc1d6ff" },
     { id: 2, name: "Синий", color: "#004cffff" },
-    { id: 3, name: "Малиновый", color: "#eeff00ff" },
+    { id: 3, name: "Малиновый", color: "#eeff00ff"},
     { id: 4, name: "Оранжевый", color: "#ff0000ff" }
 ];
 
@@ -358,6 +358,7 @@ const game = {
     savedDieIndex: null, 
     players: [], 
     activeDestinations: [], // Сюда будем писать ID точек, куда можно встать
+    tempPlayerCount: 0,
     pendingMoveInfo: null,
 
     init: function() {
@@ -421,24 +422,70 @@ const game = {
     // ... остальной код (start, rollDice и т.д.) ...
 
     start: function(count) {
+        this.tempPlayerCount = count; // Запоминаем, сколько игроков выбрали
+        
+        // Определяем, какие цвета будут играть
+        let configs = [];
+        if (count === 2) {
+            configs = [ALL_PLAYERS_DATA[0], ALL_PLAYERS_DATA[2]]; // 1 и 3
+        } else {
+            configs = ALL_PLAYERS_DATA.slice(0, count);
+        }
+
+        // Генерируем HTML для окна
+        const container = document.getElementById('bot-rows-container');
+        container.innerHTML = ''; // Чистим старое
+
+        configs.forEach(cfg => {
+            const row = document.createElement('div');
+            row.className = 'bot-setup-row';
+            
+            // Левая часть: Кружок цвета
+            const circle = document.createElement('div');
+            circle.className = 'player-color-indicator';
+            circle.style.backgroundColor = cfg.color;
+            circle.style.color = cfg.color; // Для тени
+            
+            // Правая часть: Свитч
+            const label = document.createElement('label');
+            label.className = 'switch';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `bot-toggle-${cfg.id}`; // Уникальный ID, чтобы потом считать
+            
+            const slider = document.createElement('span');
+            slider.className = 'slider';
+            
+            label.appendChild(checkbox);
+            label.appendChild(slider);
+            
+            row.appendChild(circle);
+            row.appendChild(label);
+            container.appendChild(row);
+        });
+
+        // Показываем окно
+        document.getElementById('bot-setup-overlay').style.display = 'flex';
+    },
+
+    // 2. Второй этап: Нажали "GO!" -> Реально запускаем игру
+    confirmStart: function() {
+        const count = this.tempPlayerCount;
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
                          || (navigator.maxTouchPoints > 1);
         
-        // Включаем полный экран ТОЛЬКО если это мобилка
         if (isMobile) {
             const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(() => {}); // Игнорируем ошибки, если не сработало
-            } else if (elem.webkitRequestFullscreen) { /* Safari */
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) { /* IE11 */
-                elem.msRequestFullscreen();
-            }
+            if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
         }
 
+        // Скрываем меню
         document.body.classList.remove('menu-active');
         document.getElementById('start-menu').style.display = 'none';
+        document.getElementById('bot-setup-overlay').style.display = 'none';
 
+        // Собираем конфиги снова
         let selectedConfigs = [];
         if (count === 2) {
             selectedConfigs = [ALL_PLAYERS_DATA[0], ALL_PLAYERS_DATA[2]];
@@ -446,18 +493,33 @@ const game = {
             selectedConfigs = ALL_PLAYERS_DATA.slice(0, count);
         }
 
+        // Создаем игроков, проверяя чекбоксы
         this.players = selectedConfigs.map(cfg => {
+            const checkbox = document.getElementById(`bot-toggle-${cfg.id}`);
+            const isBotActive = checkbox ? checkbox.checked : false;
+
             const pieces = [];
             for(let i=1; i<=5; i++) {
                 pieces.push({ pos: `Старт${cfg.id}_${i}`, dist: 0 });
             }
-            return { ...cfg, pieces: pieces, isFinished: false };
+            
+            return { 
+                ...cfg, 
+                pieces: pieces, 
+                isFinished: false,
+                isBot: isBotActive 
+            };
         });
 
         this.updateUI();
         renderGame();
-        //this.showStatus(`Игра на ${count} чел. Нажмите БРОСИТЬ`, "#fff");
+
+        // Если первый игрок - бот, пинаем его
+        if (this.players[this.turn].isBot) {
+            setTimeout(() => this.botTurnRoutine(), 1000);
+        }
     },
+
 
     rollDice: function() {
         if (this.phase !== 'roll') return;
@@ -516,6 +578,9 @@ const game = {
             setTimeout(() => this.nextTurn(), 1000);
         } else {
             this.updateUI();
+            if (this.players[this.turn].isBot && this.phase === 'move') {
+                 setTimeout(() => this.botMakeMove(), 1000);
+            }
         }
     },
 
@@ -580,23 +645,45 @@ const game = {
             }
 
             const isLastStep = (s === steps);
-            const obstacle = this.getPieceAt(nextPos);
-
-            if (obstacle) {
-                if (!isLastStep) return { valid: false, reason: "block" };
-                
-                if (obstacle.player.id === playerId) {
-                    if (obstacle.pos === startPos) return { valid: true, pos: nextPos };
-                    return { valid: false, reason: "busy_self" };
-                }
-                if (String(nextPos).includes("Финиш")) return { valid: false, reason: "busy_finish" };
+            
+            // Проверка препятствий на ПУТИ (промежуточные шаги)
+            if (!isLastStep) {
+                const obstacle = this.getPieceAt(nextPos);
+                if (obstacle) return { valid: false, reason: "block" };
             }
 
             currentPos = nextPos;
             if (typeof currentPos === 'number') currentDist++; 
         }
 
-        return { valid: true, pos: currentPos };
+        // === FIX: УЧЕТ СТРЕЛОК (БЕЗУСЛОВНЫХ ТЕЛЕПОРТОВ) НА ФИНИШЕ ===
+        // Если мы приземлились на стрелку, нас перенесет дальше.
+        // Нужно проверить валидность ИМЕННО КОНЕЧНОЙ ТОЧКИ.
+        let finalPos = currentPos;
+        if (typeof finalPos === 'number') {
+            let hops = 0;
+            while (unconditionalTeleports[finalPos] && hops < 5) {
+                finalPos = unconditionalTeleports[finalPos];
+                hops++;
+            }
+        }
+
+        // Проверяем занятость КОНЕЧНОЙ точки (после возможного скольжения по стрелке)
+        const obstacle = this.getPieceAt(finalPos);
+        if (obstacle) {
+            // Если там стоит СВОЙ
+            if (obstacle.player.id === playerId) {
+                // Исключение: если мы сделали круг и вернулись на свое же место (редко, но бывает)
+                if (obstacle.pos === startPos) return { valid: true, pos: finalPos };
+                
+                // Иначе - занято своим
+                return { valid: false, reason: "busy_self" };
+            }
+            // Если там стоит ВРАГ - это валидный ход (сруб), кроме Финиша
+            if (String(finalPos).includes("Финиш")) return { valid: false, reason: "busy_finish" };
+        }
+
+        return { valid: true, pos: finalPos };
     },
    
     isMoveValidForPiece: function(pieceIndex, playerId, steps) {
@@ -669,114 +756,113 @@ const game = {
         this.executeMove(pieceIndex, this.dice[this.selectedDieIndex], false);
     },
 
-    // Новая версия executeMove: она не ходит, а ИЩЕТ варианты
-    executeMove: function(pieceIndex, steps, isBonus) {
-        const playerId = isBonus ? this.bonusPlayerId : this.players[this.turn].id;
+    // === ЧИСТАЯ ЛОГИКА: Получить варианты хода ===
+    // === ЧИСТАЯ ЛОГИКА: Получить варианты хода ===
+    calculateMoveOptions: function(pieceIndex, steps, playerId) {
         const player = this.players.find(p => p.id === playerId);
         const pieceObj = player.pieces[pieceIndex];
         const currentPos = pieceObj.pos;
-        
-        // Очищаем прошлые варианты
-        this.activeDestinations = [];
-        this.pendingMoveInfo = { pieceIndex, steps, isBonus, playerId };
-
         const options = [];
 
-        // 1. ЛОГИКА ЦЕНТРА (Вход в центр или Выход)
+        // === ИСПРАВЛЕНИЕ: ПРОВЕРКА ДЛЯ БОНУСА ===
+        // В бонусный ход (когда сбежал пленник) НЕЛЬЗЯ ходить фишками, 
+        // которые стоят на Старте или в Плену. Только теми, что в поле.
+        if (this.phase === 'bonus') {
+            if (String(currentPos).includes("Старт") || String(currentPos).includes("Плен")) {
+                return []; // Ходов для этой фишки нет
+            }
+        }
+        // =========================================
+
+        // 1. ЛОГИКА ЦЕНТРА
         if (currentPos === "Центр") {
             if (steps === 3) {
-                // Если выпало 3 в центре — можно выйти на любой из 4 входов
                 centerExitOptions.forEach(opt => options.push({ target: opt, dist: 0 }));
-            } else {
-                //this.showStatus("Нужно 3 для выхода!", "orange");
-                return;
             }
         }
         else if (centerEntryPoints.includes(currentPos) && steps === 3) {
-            // Если стоим у входа и выпало 3:
-            // Вариант А: Зайти в центр
             options.push({ target: "Центр", dist: 0 });
-            // Вариант Б: Пойти дальше по кругу (обычный ход)
             const standardMove = this.checkPath(currentPos, steps, playerId);
-            if (standardMove.valid) {
-                 options.push({ target: standardMove.pos, dist: steps });
-            }
+            if (standardMove.valid) options.push({ target: standardMove.pos, dist: steps });
         }
-        // 2. ЛОГИКА МАГИЧЕСКИХ ТЕЛЕПОРТОВ (Conditional)
+        // 2. ТЕЛЕПОРТЫ
         else if (typeof currentPos === 'number' && conditionalTeleports[currentPos] && conditionalTeleports[currentPos].dice === steps) {
-            // Вариант А: Телепорт
             const rule = conditionalTeleports[currentPos];
             const distTeleport = (rule.target - currentPos + 216) % 216;
-            options.push({ target: rule.target, dist: distTeleport });
+            
+            // === FIX: ПРОВЕРЯЕМ, НЕ ЗАНЯТ ЛИ ТЕЛЕПОРТ СВОИМ ===
+            const targetOccupant = this.getPieceAt(rule.target);
+            // Добавляем вариант только если там пусто ИЛИ стоит враг
+            if (!targetOccupant || targetOccupant.player.id !== playerId) {
+                options.push({ target: rule.target, dist: distTeleport });
+            }
+            // ==================================================
 
-            // Вариант Б: Обычный ход (игнорируем телепорт)
+            // Также всегда добавляем вариант обычного шага (если он валиден)
             const standardMove = this.checkPath(currentPos, steps, playerId);
             if (standardMove.valid) {
                 options.push({ target: standardMove.pos, dist: steps });
             }
         }
-        // 3. ОБЫЧНЫЙ ХОД (Старт, Финиш, Поле)
+        // 3. ОБЫЧНЫЙ ХОД
         else {
-            // Проверки на Старт/Плен
             if (String(currentPos).includes("Старт") || String(currentPos).includes("Плен")) {
                 if (steps === 6) {
                     if (String(currentPos).includes("Плен")) {
-                         // Логика спасения из плена (тут нет выбора точки, сразу действие)
-                         this.processPrisonEscape(player, currentPos); 
-                         return;
+                         // Особая метка для выхода из плена
+                         options.push({ target: "ESCAPE_PRISON", dist: 0 });
                     } else {
-                        // Выход со старта
                         const settings = playerSettings[playerId];
                         const newPos = settings.startExit;
                         const occupant = this.getPieceAt(newPos);
-
-                        // Если пусто ИЛИ стоит враг — добавляем вариант хода
                         if (!occupant || occupant.player.id !== playerId) {
                             options.push({ target: newPos, dist: 0 });
-                        } else {
-                            // Если стоит свой — блокируем
-                            this.showStatus("Выход занят своим!", "red"); 
-                            return;
                         }
                     }
-                } else {
-                    return; //this.showStatus("Нужна 6!", "red"); return;
                 }
             } else {
-                // Обычное движение по полю
                 const check = this.checkPath(currentPos, steps, playerId);
-                if (!check.valid) {
-                    // Обработка ошибок (стена, блок и т.д.)
-                    /*if (check.reason === "block") this.showStatus("Путь заблокирован!", "red");
-                    else if (check.reason === "busy_self") this.showStatus("Занято своим!", "red");
-                    else if (check.reason === "busy_finish") this.showStatus("В доме рубить нельзя!", "red");
-                    else if (check.reason === "wall") this.showStatus("Стена финиша!", "orange");*/
-                    return;
+                if (check.valid) {
+                    options.push({ target: check.pos, dist: (typeof check.pos === 'number' && typeof currentPos === 'number') ? steps : 0 });
                 }
-                options.push({ target: check.pos, dist: (typeof check.pos === 'number' && typeof currentPos === 'number') ? steps : 0 });
             }
         }
+        return options;
+    },
 
-        // РЕЗУЛЬТАТ АНАЛИЗА:
-        if (options.length === 0) {
-            // Ходов нет
+    // Новая версия executeMove: она не ходит, а ИЩЕТ варианты
+    executeMove: function(pieceIndex, steps, isBonus) {
+        const playerId = isBonus ? this.bonusPlayerId : this.players[this.turn].id;
+        
+        // Используем новую функцию расчета
+        const options = this.calculateMoveOptions(pieceIndex, steps, playerId);
+
+        // Очищаем прошлые варианты
+        this.activeDestinations = [];
+        this.pendingMoveInfo = { pieceIndex, steps, isBonus, playerId };
+
+        if (options.length === 0) return;
+
+        // Если это выход из плена (особый случай)
+        if (options[0].target === "ESCAPE_PRISON") {
+            const player = this.players.find(p => p.id === playerId);
+            this.processPrisonEscape(player, player.pieces[pieceIndex].pos);
             return;
-        } else if (options.length === 1) {
-            // Только один вариант — ходим сразу (без кликов)
+        }
+
+        if (options.length === 1) {
             this.finalizeMove(pieceIndex, options[0].target, isBonus, steps, options[0].dist);
         } else {
-            // ЕСТЬ ВЫБОР! (Например: Телепорт или Шаг, Выход 1 или Выход 2)
-            // Сохраняем варианты dist для каждой цели, чтобы потом применить правильный
+            // ЕСТЬ ВЫБОР
             this.pendingMoveInfo.optionsMap = {};
             options.forEach(opt => {
                 this.activeDestinations.push(opt.target);
                 this.pendingMoveInfo.optionsMap[opt.target] = opt.dist;
             });
-            
-            //this.showStatus("Выберите точку назначения...", "#00ff00");
-            renderGame(); // Перерисовываем поле, чтобы появились зеленые точки
+            renderGame(); 
         }
     },
+
 
     // Обработчик клика по ЗЕЛЕНОЙ точке
     handlePointClick: function(targetId) {
@@ -799,7 +885,7 @@ const game = {
     // Вспомогательная для плена (вынес отдельно для чистоты)
     processPrisonEscape: function(player, currentPos) {
         const freeSlot = this.findFreeStartSlot(player.id);
-        if (!freeSlot) { return; } //{ this.showStatus("Старт переполнен!", "red"); return; }
+        if (!freeSlot) return; 
         
         // Находим фишку и переносим домой
         const piece = player.pieces.find(p => p.pos === currentPos);
@@ -807,37 +893,44 @@ const game = {
         piece.dist = 0;
         
         const wardenId = parseInt(currentPos.split("Плен")[1].split("_")[0]);
-        const wardenName = this.players.find(p => p.id === wardenId).name;
+        const warden = this.players.find(p => p.id === wardenId); // Находим объект игрока-тюремщика
 
-        // Включаем фазу бонуса предварительно, чтобы проверка isMoveValidForPiece
-        // знала, что сейчас бонус (и запретила выход из дома)
+        // Включаем фазу бонуса
         this.phase = 'bonus'; 
         
         // ПРОВЕРКА: Может ли тюремщик вообще походить 6-кой?
-        // (С учетом того, что из дома выходить нельзя)
         const canWardenMove = this.checkIfMovePossible(6, wardenId);
 
         if (canWardenMove) {
-            //this.showStatus(`Спасен! БОНУС для: ${wardenName}`, "gold");
             this.bonusPlayerId = wardenId;
             this.savedDieIndex = this.selectedDieIndex; // Запоминаем кубик текущего игрока
             renderGame();
+            this.updateUI(); // Обновляем UI, чтобы надпись "БОНУС" появилась
+
+            // === ВАЖНОЕ ДОБАВЛЕНИЕ: ЕСЛИ ТЮРЕМЩИК — БОТ, ЗАСТАВЛЯЕМ ЕГО ХОДИТЬ ===
+            if (warden.isBot) {
+                console.log("Bonus for bot! Thinking...");
+                setTimeout(() => this.botMakeMove(), 1000);
+            }
+            // ====================================================================
+
         } else {
-            //this.showStatus(`Спасен! У ${wardenName} нет ходов для бонуса.`, "#ccc");
-            // Отменяем фазу бонуса
+            // Если ходов нет
             this.phase = 'move'; 
             this.bonusPlayerId = null;
             
-            // Продолжаем обычный ход текущего игрока (он ведь потратил 6 на выход)
-            // Помечаем кубик как использованный и проверяем конец хода
             this.diceUsed[this.selectedDieIndex] = true;
             this.selectedDieIndex = null;
             this.checkEndTurn();
             
             renderGame();
+            
+            // Если после отмены бонуса ход все еще у бота (обычный), пусть продолжает
+            if (this.players[this.turn].isBot && this.phase === 'move') {
+                setTimeout(() => this.botMakeMove(), 1000);
+            }
         }
     },
-
 
     finalizeMove: function(pieceIndex, newPos, isBonus, steps, distIncrease) {
         const playerId = isBonus ? this.bonusPlayerId : this.players[this.turn].id;
@@ -925,31 +1018,246 @@ const game = {
             
             renderGame();
             this.updateUI(); // UI обновится, и второй кубик уже будет подсвечен
+            if (this.players[this.turn].isBot && this.phase === 'move') {
+                 setTimeout(() => this.botMakeMove(), 1000);
+            }
         }
     },
 
     checkEndTurn: function() {
         const usedCount = (this.diceUsed[0] ? 1 : 0) + (this.diceUsed[1] ? 1 : 0);
+        
+        // Если использованы оба кубика
         if (usedCount === 2) {
+            // Проверка на дубль 6-6
             if (this.dice[0] === 6 && this.dice[1] === 6) {
-                //this.showStatus("Дубль 6! Ходите снова.", "gold");
+                // Сбрасываем кубики для нового броска
                 this.diceUsed = [false, false];
                 this.phase = 'roll';
                 this.updateUI();
+                
+                // === ИСПРАВЛЕНИЕ: ПИНАЕМ БОТА ===
+                // Если сейчас ходит бот, нужно запустить его процедуру заново,
+                // чтобы он понял, что надо снова БРОСАТЬ.
+                if (this.players[this.turn].isBot) {
+                    setTimeout(() => this.botTurnRoutine(), 1000);
+                }
+                // ================================
+
             } else {
+                // Ход окончен, передаем следующему
                 this.phase = 'wait';
                 setTimeout(() => this.nextTurn(), 0);
             }
         } else {
+            // Если остался один кубик
             const remainingIdx = this.diceUsed[0] ? 1 : 0;
+            
+            // Если им нельзя походить — сжигаем и передаем ход
             if (!this.checkIfMovePossible(this.dice[remainingIdx])) {
-                //this.showStatus("Оставшийся кубик сгорает.", "orange");
                 this.diceUsed[remainingIdx] = true;
                 this.updateUI();
                 this.phase = 'wait';
                 setTimeout(() => this.nextTurn(), 0);
             }
+            // Иначе — ждем, пока игрок (или бот) использует второй кубик.
+            // (Бот это сделает через таймер в finalizeMove, который мы добавили ранее)
         }
+    },
+
+    // === ЛОГИКА БОТА ===
+
+    // Главная точка входа для бота
+    botTurnRoutine: function() {
+        const player = this.players[this.turn];
+        if (!player.isBot || this.phase === 'finished') return;
+
+        console.log("Bot thinking...");
+
+        // 1. Бросок кубика (если фаза roll)
+        if (this.phase === 'roll') {
+            setTimeout(() => {
+                this.rollDice();
+                // После броска бот снова подумает (вызовется через checkEndTurn или rollDice)
+                setTimeout(() => this.botMakeMove(), 1000); 
+            }, 1000);
+        } 
+        // 2. Выполнение хода (если фаза move)
+        else if (this.phase === 'move') {
+            setTimeout(() => this.botMakeMove(), 1000);
+        }
+    },
+
+    botMakeMove: function() {
+        let activePlayerId;
+        const isBonusTurn = (this.phase === 'bonus');
+
+        if (isBonusTurn) {
+            activePlayerId = this.bonusPlayerId;
+        } else {
+            activePlayerId = this.players[this.turn].id;
+        }
+
+        const player = this.players.find(p => p.id === activePlayerId);
+        if (!player || !player.isBot) return;
+
+        // 1. СОБИРАЕМ ВСЕ ВОЗМОЖНЫЕ ВАРИАНТЫ (Legal Moves)
+        let allLegalMoves = [];
+        let movesToAnalyze = [];
+
+        if (isBonusTurn) {
+            movesToAnalyze.push({ diceVal: 6, dieIdx: -1 }); 
+        } else {
+            if (this.selectedDieIndex !== null) {
+                // Если кубик уже выбран (например, первый ход дубля сделан)
+                movesToAnalyze.push({ diceVal: this.dice[this.selectedDieIndex], dieIdx: this.selectedDieIndex });
+            } else {
+                // Если доступны оба или один из кубиков
+                if (!this.diceUsed[0]) movesToAnalyze.push({ diceVal: this.dice[0], dieIdx: 0 });
+                if (!this.diceUsed[1]) movesToAnalyze.push({ diceVal: this.dice[1], dieIdx: 1 });
+            }
+        }
+
+        // Проходим по всем доступным кубикам
+        movesToAnalyze.forEach(move => {
+            // Проходим по всем фишкам
+            player.pieces.forEach((piece, pIdx) => {
+                // Получаем технические варианты хода для этой фишки
+                const options = this.calculateMoveOptions(pIdx, move.diceVal, player.id);
+                
+                options.forEach(opt => {
+                    // 1. Оцениваем ход
+                    let score = this.evaluateMoveScore(opt.target, player.id, opt.dist, piece.pos);
+                    
+                    // 2. Combo Check (Проверка на добивание вторым кубиком)
+                    if (!isBonusTurn && this.selectedDieIndex === null) {
+                        const otherDieIdx = (move.dieIdx === 0) ? 1 : 0;
+                        // Если второй кубик существует и доступен
+                        if (!this.diceUsed[otherDieIdx]) {
+                            const otherDieVal = this.dice[otherDieIdx];
+                            if (typeof opt.target !== 'string') { // Не проверяем комбо для выхода из плена
+                                const comboCheck = this.checkPath(opt.target, otherDieVal, player.id);
+                                if (comboCheck.valid) {
+                                    const potentialVictim = this.getPieceAt(comboCheck.pos);
+                                    if (potentialVictim && potentialVictim.player.id !== player.id) {
+                                        score += 900; // Бонус за комбинацию
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ДОБАВЛЯЕМ В ОБЩИЙ СПИСОК
+                    allLegalMoves.push({
+                        dieIndex: move.dieIdx,
+                        pieceIndex: pIdx,
+                        target: opt.target,
+                        dist: opt.dist,
+                        isEscape: (opt.target === "ESCAPE_PRISON"),
+                        steps: move.diceVal,
+                        score: score
+                    });
+                });
+            });
+        });
+
+        // 2. ВЫБИРАЕМ ЛУЧШИЙ (ИЛИ ХОТЬ КАКОЙ-ТО)
+        if (allLegalMoves.length > 0) {
+            // Сортируем: сначала те, у кого больше очков
+            allLegalMoves.sort((a, b) => b.score - a.score);
+
+            // Берем самый первый (лучший)
+            const bestMove = allLegalMoves[0];
+            
+            // console.log(`Bot options: ${allLegalMoves.length}. Best Score: ${bestMove.score}`);
+
+            if (!isBonusTurn) {
+                this.selectedDieIndex = bestMove.dieIndex;
+            }
+            
+            if (bestMove.isEscape) {
+                this.processPrisonEscape(player, player.pieces[bestMove.pieceIndex].pos);
+            } else {
+                this.finalizeMove(
+                    bestMove.pieceIndex, 
+                    bestMove.target, 
+                    isBonusTurn, 
+                    bestMove.steps, 
+                    bestMove.dist
+                );
+            }
+        } else {
+            // 3. ЕСЛИ СПИСОК ПУСТ — ЗНАЧИТ ХОДОВ РЕАЛЬНО НЕТ
+            // Только в этом случае сжигаем кубик
+            if (isBonusTurn) {
+                 this.processPrisonEscape(player, "FORCE_CANCEL");
+            } else {
+                // Сжигаем тот кубик, который пытались использовать
+                const dieToBurn = (this.selectedDieIndex !== null) 
+                    ? this.selectedDieIndex 
+                    : (this.diceUsed[0] ? 1 : 0); // Если оба свободны, сжигаем первый попавшийся (0)
+                    
+                console.log("Bot has NO legal moves. Burning die.");
+                this.diceUsed[dieToBurn] = true;
+                this.selectedDieIndex = null;
+                this.checkEndTurn();
+                this.updateUI();
+            }
+        }
+    },
+    
+    // Эвристика: Насколько хорош этот ход?
+    // Эвристика: Насколько хорош этот ход?
+    // Эвристика: Насколько хорош этот ход?
+    evaluateMoveScore: function(targetPos, playerId, distIncrease, currentPos) {
+        let score = 0;
+
+        // 0. Выход из плена (приоритет!)
+        if (targetPos === "ESCAPE_PRISON") return 200;
+
+        // 1. Срубить врага (Самый высокий приоритет)
+        const victim = this.getPieceAt(targetPos);
+        if (victim && victim.player.id !== playerId) {
+            score += 1000;
+        }
+
+        // 2. Зайти на финиш
+        if (String(targetPos).includes("Финиш")) {
+            score += 500;
+            const level = parseInt(targetPos.split('_')[1]);
+            score += level * 10; 
+        }
+
+        // 3. Выйти со старта
+        if (String(currentPos).includes("Старт") && !String(targetPos).includes("Старт")) {
+             score += 150; 
+        }
+
+        // === 4. ЛОГИКА ЦЕНТРА (ИСПРАВЛЕННАЯ) ===
+        
+        // Если мы ВЫХОДИМ из центра — это хорошо (лучше, чем просто шаг)
+        if (currentPos === "Центр" && targetPos !== "Центр") {
+            score += 60; 
+        }
+
+        // Если мы ЗАХОДИМ в Центр
+        if (targetPos === "Центр") {
+            // Было +50, ставим 0. 
+            // Это значит, бот пойдет в центр, ТОЛЬКО если альтернатива — стоять на месте или умереть.
+            // Обычный шаг дает +steps (напр. +3), поэтому бот предпочтет пойти дальше по кругу (3 > 0).
+            score += 0; 
+        }
+        // ========================================
+
+        // 5. Телепорт или сокращение пути
+        if (distIncrease > 6) {
+            score += 100;
+        }
+
+        // 6. Просто пройти вперед
+        score += distIncrease;
+
+        return score;
     },
 
     nextTurn: function() {
@@ -982,6 +1290,7 @@ const game = {
         this.bonusPlayerId = null;
         this.updateUI();
         renderGame();
+        this.botTurnRoutine();
     },
 
 
@@ -1017,7 +1326,7 @@ const game = {
             const warden = this.players.find(p => p.id === this.bonusPlayerId);
             activeColor = warden.color;
             activeName = warden.name + " (Бонус)";
-            status.innerText = "БОНУСНЫЙ ХОД";
+            //status.innerText = "БОНУСНЫЙ ХОД";
         } else {
             const player = this.players[this.turn];
             if (player) {
