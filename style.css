@@ -20,6 +20,31 @@ body {
     transform: translate(-50%, -50%); z-index: 2; box-sizing: border-box;
 }
 
+.point::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    /* Размер зоны клика (в пикселях, чтобы удобно было пальцем) */
+    width: 30px; 
+    height: 30px;
+    
+    border-radius: 50%;
+    z-index: 10; /* Лежит поверх самой точки */
+    cursor: pointer;
+    
+    /* Убери комментарий ниже, если хочешь увидеть эту зону (для теста) */
+    /* background-color: rgba(255, 0, 0, 0.3); */
+}
+
+/* Для активных целей делаем зону еще больше (чтоб совсем легко попасть) */
+.point.highlight-dest::before {
+    width: 50px;
+    height: 50px;
+}
+
 .dice-container {
     display: flex;
     gap: 15px;
@@ -218,9 +243,9 @@ svg { z-index: 1; }
         box-shadow: 0 0 10px var(--p-color);
     } 
     50% { 
-        transform: translate(-50%, -50%) scale(1.2);
-        opacity: 0.8;
-        box-shadow: 0 0 25px var(--p-color), 0 0 35px white; /* Вспышка белым */
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0.9;
+        box-shadow: 0 0 25px var(--p-color), 0 0 50px white; /* Вспышка белым */
     } 
 }
 
@@ -232,8 +257,8 @@ svg { z-index: 1; }
 }
 
 @keyframes dest-pulse {
-    from { transform: translate(-50%, -50%) scale(1.3); opacity: 0.8; }
-    to { transform: translate(-50%, -50%) scale(1.6); opacity: 1; }
+    from { transform: translate(-60%, -60%) scale(1.5); opacity: 0.8; }
+    to { transform: translate(-50%, -50%) scale(1.8); opacity: 1; }
 }
 
 /* Создаем пульсирующий прицел вокруг точки */
@@ -242,17 +267,17 @@ svg { z-index: 1; }
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 300%; height: 300%; /* Кольцо в 3 раза больше точки */
-    border: 2px solid #fff;     /* Белое кольцо */
-    border-radius: 50%;
+    width: 1000%; height: 1000%; /* Кольцо в 3 раза больше точки */
+    border: 5px solid #e3ff0f;     /* Белое кольцо */
+    border-radius: 70%;
     animation: target-ripple 1s infinite ease-out;
-    box-shadow: 0 0 10px #fff;
+    box-shadow: 0 0 15px #fff;
     pointer-events: none; /* Чтобы клик проходил сквозь кольцо в точку */
 }
 
 @keyframes target-ripple {
     0% { width: 100%; height: 100%; opacity: 1; border-width: 3px; }
-    100% { width: 400%; height: 400%; opacity: 0; border-width: 0px; }
+    100% { width: 500%; height: 500%; opacity: 0; border-width: 0px; }
 }
 
 #center-hud {
