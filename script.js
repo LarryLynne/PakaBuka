@@ -674,7 +674,7 @@ const game = {
             // Если там стоит СВОЙ
             if (obstacle.player.id === playerId) {
                 // Исключение: если мы сделали круг и вернулись на свое же место (редко, но бывает)
-                if (obstacle.pos === startPos) return { valid: true, pos: finalPos };
+                if (finalPos === startPos) return { valid: true, pos: finalPos };
                 
                 // Иначе - занято своим
                 return { valid: false, reason: "busy_self" };
